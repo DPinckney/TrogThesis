@@ -1,0 +1,209 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(raster)
+#library(rasterVis)
+#library(rgdal)
+library(maps)
+library(mapdata)
+#library(maptools)
+library(dplyr)
+library(glmnet)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggspatial)
+library(ggplot2)
+library(plotly)
+library(CoordinateCleaner)
+library(tidyverse)
+library(magrittr)
+
+#rasterVis, rgdal, maptools failed to install
+
+#import data from csv
+my_data <- read.csv("Trog_LEA.csv")
+
+my_data #55 rows
+### data cleaning
+### has location data?
+my_datab <- my_data %>% filter(!is.na(long) & !is.na(lat))  ##only keep data that have geolocations
+
+my_datab$long <- as.numeric(as.character(my_datab$long))
+my_datab$lat <- as.numeric(as.character(my_datab$lat))
+
+unique(my_datab$genus)
+my_datab
+
+#my_datac <- my_datab %>% 
+ # rename(
+  #  decimallongitude = long,
+   # decimallatitude = lat,
+    #species = genus
+    #)
+
+
+#rl <- clean_coordinates(x = my_datac)
+#summary(rl)
+#plot(rl)
+#my_datac
+#this is for stupid data from not awesome museums aka GBIF
+
+#write.csv(rl,"flagged_GBIF_coords.csv", row.names = TRUE)
+
+
+#my_datab <- my_datab[-c(139, 138, 119, 120, 121, 122, 123, 124, 125, 126), ]
+my_datab
+#48 specimens, so 7 specimens lost from having no data
+```
+
+
+
+```{r}
+
+theme_set(theme_bw())
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+class(world)
+
+map2 <- ggplot(data = world) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue"))  #coloring the ocean blue
+        
+map_clim_specimens <- map2 + geom_jitter(data = my_datab, height=.03,width=.035,aes(y = long, x = lat, color = genus), 
+                    size = 3, shape = 16, alpha = 0.9) + scale_color_manual(values=c("#2171b5"))
+
+map_clim_specimens
+
+#ggsave("map_clim_specimens.pdf", width = 17, height = 12, units = "cm", dpi = 300)
+
+########################################################################################################################################
+########################################################################################################################################
+
+
+
+##do you need to remove any questionable data?
+###duplicate data?
+my_datab <- my_datab %>%
+  distinct(long, lat, .keep_all=TRUE)  ##only keep unique data
+
+write.csv(my_datab, "TrogUnique.csv", row.names = TRUE)
+
+count(my_datab)
+map2 + geom_jitter(data = my_datab, height=.03,width=.035,aes(x = lat, y = long, color = genus), 
+                    size = 3, shape = 21, alpha = 1)
+
+
+```
+
+
+
+
+```{r}
+
+Env <- geodata::worldclim_global(var="bio", res=0.5, path= "/Users/dpinckney/Downloads/OEBThesis/Mapping/NicheModeling") ##comes in as global by default
+library(sdmpredictors)
+
+options(sdmpredictors_datadir="/Users/dpinckney/Downloads/OEBThesis/Mapping/NicheModeling/wc2.1_30s_bio")
+
+specific <- load_layers(c("wc2.1_30s_bio_1"))
+
+
+#worldclim_global(var, res, path, ..
+Env2 <- as(Env, "Raster")
+
+
+###Repeat this for each genus
+########################################################################################################################################
+########################################################################################################################################
+dataset_NZ_oop
+
+write.csv(dataset_NZ_oop, "BCdataset_NZ_oop.csv", row.names=FALSE)
+
+
+my_species <- dataset_NZ_oop 
+
+#do not inlcude duplicates (samples in same climate data grid cells)
+coordinates(my_species)=~long+lat
+proj4string(my_species) <- "+proj=longlat +datum=WGS84 +no_defs"
+pts_to_keep = !duplicated(raster::cellFromXY(Env2[[1]],my_species))
+my_species = my_species[pts_to_keep,]
+my_species@data=cbind(my_species@data,raster::extract(Env2,my_species,ID=F))
+my_species@data
+
+oop_bioclims <- as.data.frame(my_species@data)
+
+########################################################################################################################################
+########################################################################################################################################
+my_species2 <- my_datab
+
+my_datab
+write.csv(my_datab, "BCdataset_NZ_per.csv", row.names=FALSE)
+
+#do not inlcude duplicates (samples in same climate data grid cells)
+coordinates(my_species2)=~long+lat
+proj4string(my_species2) <- "+proj=longlat +datum=WGS84 +no_defs"
+pts_to_keep = !duplicated(raster::cellFromXY(Env2[[1]],my_species2))
+my_species2 = my_species2[pts_to_keep,]
+my_species2@data=cbind(my_species2@data,raster::extract(Env2,my_species2,ID=F))
+
+
+peri_bioclims <- as.data.frame(my_species2@data)
+
+peri_bioclims
+########################################################################################################################################
+########################################################################################################################################
+
+
+count(oop_bioclims)
+count(peri_bioclims)
+
+genera_climate_df <- rbind(oop_bioclims, peri_bioclims)
+
+genera_climate_df
+write.csv(genera_climate_df, "genera_climate_df.csv")
+
+
+```
+
+
+```{r}
+
+#colinnearlity
+## Not run: 
+library(usdm)
+
+CSF.df <- with(oop_bioclims, data.frame(wc2.1_2.5m_bio_1, wc2.1_2.5m_bio_2, wc2.1_2.5m_bio_3, wc2.1_2.5m_bio_4, wc2.1_2.5m_bio_5, wc2.1_2.5m_bio_6, wc2.1_2.5m_bio_7, wc2.1_2.5m_bio_8, wc2.1_2.5m_bio_9, wc2.1_2.5m_bio_10, wc2.1_2.5m_bio_11, wc2.1_2.5m_bio_12, wc2.1_2.5m_bio_13, wc2.1_2.5m_bio_14, wc2.1_2.5m_bio_15, wc2.1_2.5m_bio_16, wc2.1_2.5m_bio_17, wc2.1_2.5m_bio_18, wc2.1_2.5m_bio_19))
+usdm::vif(CSF.df)
+
+
+v1 <- usdm::vifcor(CSF.df, th=0.7) # identify collinear variables that should be excluded
+
+v1
+
+
+CSF.df2 <- with(peri_bioclims, data.frame(wc2.1_2.5m_bio_1, wc2.1_2.5m_bio_2, wc2.1_2.5m_bio_3, wc2.1_2.5m_bio_4, wc2.1_2.5m_bio_5, wc2.1_2.5m_bio_6, wc2.1_2.5m_bio_7, wc2.1_2.5m_bio_8, wc2.1_2.5m_bio_9, wc2.1_2.5m_bio_10, wc2.1_2.5m_bio_11, wc2.1_2.5m_bio_12, wc2.1_2.5m_bio_13, wc2.1_2.5m_bio_14, wc2.1_2.5m_bio_15, wc2.1_2.5m_bio_16, wc2.1_2.5m_bio_17, wc2.1_2.5m_bio_18, wc2.1_2.5m_bio_19))
+usdm::vif(CSF.df)
+
+
+v2 <- usdm::vifcor(CSF.df2, th=0.7) # identify collinear variables that should be excluded
+
+v2
+
+
+
+
+## End(Not run)
+
+```
+
+

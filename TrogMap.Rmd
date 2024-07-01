@@ -1,0 +1,171 @@
+---
+title: "trog map"
+author: "Daniel Pinckney"
+date: '2024-02-05'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2")
+library("sf")
+library ("dplyr")
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("ggspatial")
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+my_species <-read.csv("Troglosiro_Records2.csv")
+my_species_b <- my_species %>% filter(!is.na(Longitude) & !is.na(Latitude))
+
+my_species2 <- read.csv("Trog_GBIF.csv")
+my_species2_b <- my_species2 %>% filter(!is.na(lon) & !is.na(lat))
+
+my_species3 <- read.csv("Trog_GBIFUnique2.csv")
+my_species3_b <- my_species3 %>% filter(!is.na(lon) & !is.na(lat))
+
+theme_set(theme_bw())
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+class(world)
+
+world2 <- ne_countries(scale = 10, returnclass = "sf")
+class(world)
+
+
+ggplot(data = world) +
+        geom_sf() +
+        coord_sf(xlim = c(140, 180), ylim = c(-40, -10)) + #find New Caledonia coords
+        theme(panel.background = element_rect(fill = "aliceblue")) + #coloring the ocean blue
+        geom_jitter(data = my_species_b, height=.03,width=.035,aes(x = Longitude, y = Latitude), 
+                    size = 3, shape = 21, alpha = 1, fill = "Original.species.identification")
+        
+map1
+
+
+#specifying colors in the code using hex codes (and adding a title) - by genus
+map2 <- ggplot(data = world) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167.2), ylim = c(-23, -20)) + #find New Caledonia coords
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species_b, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 2, shape = 21, alpha = .5) + scale_fill_manual(values = c("#004B00", "#009BFF", "#00AAA7", "#00DFE9", "#FF55F7","#123456", "#994567", "#663231", "#009B11", "#09BFFF", "#Bff222", "#444BBB", "#999BBB")) +
+                        labs(title = "Troglosiro Species") 
+
+map2
+
+map4 <- ggplot(data = world2) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 1.5, shape = 21, alpha = .5) + scale_fill_manual(values = c("#663231", "#db5f57", "#db9c57", "goldenrod2", "yellow", "greenyellow", "#62db58", "#58da87", "#58b5db", "#5778db", "#7357db", "#a1db57", "#db56c9", "#db578c")) +
+                        labs(title = "Troglosiro Species") 
+
+map4
+
+map5 <- ggplot(data = world2) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species2_b, height=.03,width=.035,aes(x = lon, y = lat, fill=genus), 
+                        size = 1, shape = 21, alpha = 1, fill="black") +
+                        labs(title = "Troglosiro Species") 
+
+map5
+
+map6 <- ggplot(data = world2) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species2_b, height=.03,width=.035,aes(x = lon, y = lat, fill=genus), 
+                        size = 1, shape = 21, alpha = 1, fill="black") +
+                        labs(title = "Troglosiro Species") +
+        geom_jitter(data = my_species, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 1.5, shape = 21, alpha = .5) + scale_fill_hue() +
+                        labs(title = "Troglosiro Species", fill = "Original Species Identification") 
+
+map6
+
+## map7 <- ggplot(data = world2) +
+     #   geom_sf() +
+      #  coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+       # theme(panel.background = element_rect(fill = "aliceblue")) +
+      #  geom_jitter(data = my_species3_b, height=.03,width=.035,aes(x = lon, y = lat, fill = species), 
+        #                size = 1, shape = 21, alpha = 1, scale_fill_manual(values = c("#663231", "#db5f57", "black", "#db9c57", "goldenrod2", "yellow", "greenyellow", "#62db58", "#58da87", "#58b5db", "#5778db", "#7357db", "springgreen", "#db56c9", "#db578c"))) +
+ #                       labs(title = "Troglosiro Species") 
+
+# map7
+
+#automatically color by a standard gradient (without having to specify individually) - by species
+map3 <- ggplot(data = world) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 1, shape = 21, alpha = 1.0) + scale_fill_hue() +
+                        labs(title = "Troglosiro Species") 
+
+map3
+```
+
+```{r}
+png(filename= "~/Desktop/Trog_HR_Map2.png", bg = "transparent", width = 9, height = 6.75, units = "in", res = 800)
+
+ggplot(data = world2) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167.05), ylim = c(-22.5, -19.95)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 1.5, shape = 21, alpha = .6) + scale_fill_manual(values = c("#663231", "#db5f57", "#db9c57", "goldenrod2", "yellow", "greenyellow", "#62db58", "#58da87", "#58b5db", "#5778db", "#7357db", "springgreen", "#db56c9", "#db578c")) +
+                        labs(title = "Troglosiro Species Sampling", fill = "Original Species Identification") 
+
+dev.off()
+
+png(filename= "~/Desktop/Trog_HR_Map.png", bg = "transparent", width = 9, height = 6.75, units = "in", res = 600)
+
+ggplot(data = world2) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 168), ylim = c(-22.75, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 2, shape = 21, alpha = .6) + scale_fill_manual(values = c("#663231", "#db5f57", "#db9c57", "goldenrod2", "yellow", "greenyellow", "#62db58", "#58da87", "#58b5db", "#5778db", "#7357db", "#a1db57", "#db56c9", "#db578c")) +
+                        labs(title = "Troglosiro Species", fill = "Original Species Identification") 
+
+dev.off()
+
+png(filename= "~/Desktop/Trog_Prelim_Map.png", bg = "transparent", width = 9, height = 6.75, units = "in", res = 600)
+
+ggplot(data = world) +
+        geom_sf() +
+        coord_sf(xlim = c(164, 167), ylim = c(-22.5, -20)) +
+        theme(panel.background = element_rect(fill = "aliceblue")) +
+        geom_jitter(data = my_species, height=.03,width=.035,aes(x = Longitude, y = Latitude, fill=Original.species.identification), 
+                        size = 2, shape = 21, alpha = .8) + scale_fill_hue() +
+                        labs(title = "Troglosiro Species") 
+
+dev.off()
+```
+
+
+```{r}
+library(rbokeh)
+library(htmlwidgets)
+library(plotly)
+
+
+#peripatoides
+peri <- figure(width = 800, height = 450, xlim = c(140, 180), ylim = c(-30, 0)) %>%
+  ly_map("world", col = "gray") %>%
+  ly_points(Longitude, Latitude, data = my_species, size = 7, color = "black", fill_color = Original.species.identification, glyph = Original.species.identification,
+    hover = c(Accession.no., Locality, Original.species.identification)) 
+```
+
